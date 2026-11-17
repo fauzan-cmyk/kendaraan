@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <title>Rental</title>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <style type="text/tailwindcss">
+    @theme {
+      --font-sans: "Plus Jakarta Sans", system-ui, sans-serif;
+      --color-navy: #0f172a;
+      --color-navy-aktif: #1e293b;
+      --color-kuning: #fbbf24;
+      --color-kuning-muda: #fcd34d;
+      --radius-kartu: 14px;
+      --radius-isian: 10px;
+    }
+  </style>
+</head>
+<body class="flex min-h-screen bg-slate-50 font-sans text-slate-900">
+<aside id="menu" class="flex w-60 shrink-0 flex-col gap-7 bg-navy px-4 py-7"></aside>
+<main class="min-w-0 max-w-[1500px] flex-1 p-9">
+  <header id="header" data-judul="Rental" data-sub="Kelola transaksi sewa motor dan mobil"></header>
+
+  <form id="cari" data-kartu class="mb-6">
+    <label>Penyewa <input name="penyewa" /></label>
+    <label>Kendaraan <input name="kendaraan" /></label>
+    <label>Tanggal mulai <input name="mulai" type="date" /></label>
+    <label>Tanggal kembali <input name="kembali" type="date" /></label>
+    <button>Cari</button>
+    <button type="reset">Reset</button>
+  </form>
+
+  <section id="ringkasan" class="mb-6 flex flex-wrap gap-4"></section>
+
+  <section id="bagian-tambah" data-kartu class="mb-6">
+    <h2 class="mb-4 text-base font-extrabold">Tambah rental</h2>
+    <form id="tambah">
+      <label>Penyewa <input name="penyewa" required /></label>
+      <label>Kendaraan <select name="plat" id="pilihan" class="min-w-[230px]"></select></label>
+      <label>Tanggal mulai <input name="tanggalMulai" type="date" required /></label>
+      <label>Tanggal kembali <input name="tanggalKembali" type="date" required /></label>
+      <label>Kartu identitas
+       <select name="jenisIdentitas"><option>KTP</option><option>KK</option></select>
+      </label>
+      <label>Nomor identitas <input name="noIdentitas" required minlength="5" maxlength="30" /></label>
+      <button>Simpan</button>
+    </form>
+    <p class="mt-3.5 text-[13px] text-slate-500">Status dan biaya dihitung otomatis dari lama sewa. Kartu identitas ditahan selama sewa dan dikembalikan setelah pembayaran lunas.</p>
+  </section>
+
+  <section data-kartu class="overflow-x-auto">
+    <h2 class="mb-2 text-base font-extrabold">Data rental</h2>
+    <table>
+      <thead>
+        <tr><th>ID</th><th>Penyewa</th><th>Kendaraan</th><th>Periode</th><th>Status</th><th>Kartu identitas</th><th class="!text-right">Biaya akhir</th><th></th></tr>
+      </thead>
+      <tbody id="isi"></tbody>
+    </table>
+  </section>
+</main>
+
+<script src="api.js"></script>
+<script>
+  const cari = document.getElementById("cari");
+  const tambah = document.getElementById("tambah");
+  const STAT = ["bg-blue-100 text-blue-800", "bg-amber-100 text-amber-800", "bg-green-100 text-green-800"];
+  const IKON_STAT = [IKON.naik, IKON.transaksi, IKON.naik];
+  const TOMBOL = "h-[34px] cursor-pointer rounded-lg border px-3.5 text-[13px] font-bold";
+
+  function statistik(r) {
+    const rata = r.jumlah ? Math.round(r.total / r.jumlah) : 0;
+    return [["Jumlah transaksi", r.jumlah], ["Total pendapatan", rupiah(r.total)], ["Rata-rata transaksi", rupiah(rata)]]
+      .map(([judul, isi], i) => `<div class="${GAYA.kartu} flex flex-1 basis-52 items-center gap-4">
+        <span class="flex size-[46px] items-center justify-center rounded-xl ${STAT[i]}">${svg(IKON_STAT[i], 22)}</span>
+        <div><div class="text-[13px] font-semibold text-slate-500">${judul}</div>
+          <div class="mt-0.5 text-2xl font-extrabold">${isi}</div></div></div>`).join("");
+  }
+
+  function kartuIdentitas(r) {
+    if (r.statusId === "-") {
+      return "-";
+    }
+    const menunggu = r.statusId === "Ditahan" && r.statusBayar !== "Lunas"
+      ? '<br><span class="text-xs text-slate-500">Menunggu lunas</span>' : "";
+    return `${teks(r.jenisId)} <span class="text-slate-500">${teks(r.noId)}</span><br>${badge(r.statusId)}${menunggu}`;
+  }
+
+  function tombolAksi(r, admin) {
+    if (!admin) {
+      return "";
+    }
+    let aksi = "";
+    if (r.statusId === "Ditahan" && r.statusBayar === "Lunas") {
+      aksi += `<button onclick="kembalikanKartu('${r.id}')" class="${TOMBOL} border-green-200 bg-green-50 text-green-800 hover:bg-green-100">Kembalikan kartu</button> `;
+    }
+    return aksi + `<button onclick="hapus('${r.id}')" class="${TOMBOL} border-red-200 bg-white text-red-700 hover:bg-red-50">Hapus</button>`;
+  }
+
+  async function muat() {
+    try {
+      const saya = await panggil("auth/saya");
+      const rental = await panggil("rental" + filter(cari));
+      const ringkasan = await panggil("rental/ringkasan");
+      const tersedia = await panggil("kendaraan?ketersediaan=Tersedia");
+      const admin = saya.peran === "admin";
+      document.getElementById("bagian-tambah").hidden = admin;
+
+      document.getElementById("ringkasan").innerHTML = statistik(ringkasan);
+
+      document.getElementById("pilihan").innerHTML = tersedia
+        .map((k) => `<option value="${k.plat}">${teks(k.nama)} - ${rupiah(k.tarif)}/hari</option>`)
+        .join("");
+
+      document.getElementById("isi").innerHTML = rental.map((r) => `<tr>
+        <td class="font-semibold text-slate-400">${r.id}</td>
+        <td>${avatar(r.penyewa)}</td>
+        <td><b>${teks(r.kendaraan)}</b><br><span class="text-xs text-slate-500">${teks(r.plat)}</span></td>
+        <td>${r.mulai} - ${r.kembali}<br><span class="text-xs text-slate-500">${r.lama} hari</span></td>
+        <td>${badge(r.masa)} <span class="ml-1.5 text-xs text-slate-500">diskon ${Number(r.diskon)}%</span></td>
+        <td>${kartuIdentitas(r)}</td>
+        <td class="text-right"><b class="text-[15px]">${rupiah(r.biaya)}</b><br><s class="text-xs text-slate-400">${rupiah(r.normal)}</s></td>
+        <td>${tombolAksi(r, admin)}</td>
+      </tr>`).join("") || '<tr><td colspan="8" class="!py-8 text-center text-slate-500">Data tidak ditemukan</td></tr>';
+    } catch (error) {
+      alert(error.message);
+    }
+  }
+
+  async function kembalikanKartu(id) {
+    if (!confirm("Kembalikan kartu identitas rental " + id + " kepada penyewa?")) {
+      return;
+    }
+    try {
+      await panggil("rental/" + id + "/kembalikan-kartu", "POST");
+      muat();
+    } catch (error) {
+      alert(error.message);
+    }
+  }
+
+  async function hapus(id) {
+    if (!confirm("Hapus rental " + id + "?")) {
+      return;
+    }
+    try {
+      await panggil("rental/" + id, "DELETE");
+      muat();
+    } catch (error) {
+      alert(error.message);
+    }
+  }
+
+  cari.addEventListener("submit", (e) => { e.preventDefault(); muat(); });
+  cari.addEventListener("reset", () => setTimeout(muat, 0));
+
+  tambah.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    try {
+      await panggil("rental", "POST", Object.fromEntries(new FormData(tambah)));
+      tambah.reset();
+      muat();
+    } catch (error) {
+      alert(error.message);
+    }
+  });
+
+  muat();
+</script>
+</body>
+</html>

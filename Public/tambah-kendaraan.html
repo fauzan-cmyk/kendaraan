@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <title>Tambah kendaraan</title>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <style type="text/tailwindcss">
+    @theme {
+      --font-sans: "Plus Jakarta Sans", system-ui, sans-serif;
+      --color-navy: #0f172a;
+      --color-navy-aktif: #1e293b;
+      --color-kuning: #fbbf24;
+      --color-kuning-muda: #fcd34d;
+      --radius-kartu: 14px;
+      --radius-isian: 10px;
+    }
+  </style>
+</head>
+<body class="flex min-h-screen bg-slate-50 font-sans text-slate-900">
+<aside id="menu" class="flex w-60 shrink-0 flex-col gap-7 bg-navy px-4 py-7"></aside>
+<main class="min-w-0 max-w-[1080px] flex-1 p-9">
+  <header id="header" data-judul="Tambah Kendaraan" data-sub="Isi data unit baru. Status awal otomatis tersedia."></header>
+
+  <section data-kartu>
+    <h2 class="mb-4 text-base font-extrabold">Tambah unit</h2>
+    <form id="tambah">
+      <label>Nama kendaraan <input name="nama" placeholder="Contoh: Sedan" required /></label>
+      <label>Jenis <select name="jenis"><option>Mobil</option><option>Motor</option></select></label>
+      <label>Tarif per hari <input name="tarif" type="number" placeholder="70000" required /></label>
+      <button>Simpan</button>
+    </form>
+  </section>
+</main>
+
+<script src="api.js"></script>
+<script>
+  const tambah = document.getElementById("tambah");
+
+  tambah.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    try {
+      await panggil("tambah-kendaraan", "POST", Object.fromEntries(new FormData(tambah)));
+      alert("Unit berhasil ditambahkan");
+      location.href = "kendaraan.html";
+    } catch (error) {
+      alert(error.message);
+    }
+  });
+</script>
+</body>
+</html>

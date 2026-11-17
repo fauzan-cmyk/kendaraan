@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <title>Transaksi</title>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <style type="text/tailwindcss">
+    @theme {
+      --font-sans: "Plus Jakarta Sans", system-ui, sans-serif;
+      --color-navy: #0f172a;
+      --color-navy-aktif: #1e293b;
+      --color-kuning: #fbbf24;
+      --color-kuning-muda: #fcd34d;
+      --radius-kartu: 14px;
+      --radius-isian: 10px;
+    }
+  </style>
+</head>
+<body class="flex min-h-screen bg-slate-50 font-sans text-slate-900">
+<aside id="menu" class="flex w-60 shrink-0 flex-col gap-7 bg-navy px-4 py-7"></aside>
+<main class="min-w-0 max-w-[1080px] flex-1 p-9">
+  <header id="header" data-judul="Transaksi" data-sub="Detail transaksi dan status pembayaran"></header>
+
+  <form id="cari" data-kartu class="mb-6">
+    <label>Penyewa <input name="penyewa" /></label>
+    <label>Kendaraan <input name="kendaraan" /></label>
+    <label>Masa sewa
+      <select name="masa"><option value="">Semua</option><option>SHORT</option><option>MEDIUM</option><option>LONG</option></select>
+    </label>
+    <button>Cari</button>
+    <button type="reset">Reset</button>
+  </form>
+
+  <section data-kartu class="overflow-x-auto">
+    <table>
+      <thead>
+        <tr><th>ID</th><th>Penyewa</th><th>Kendaraan</th><th>Lama sewa</th><th>Masa sewa</th><th>Diskon</th><th class="!text-right">Harga</th><th>Status pembayaran</th></tr>
+      </thead>
+      <tbody id="isi"></tbody>
+    </table>
+  </section>
+</main>
+
+<script src="api.js"></script>
+<script>
+  const cari = document.getElementById("cari");
+
+  async function muat() {
+    try {
+      const data = await panggil("transaksi" + filter(cari));
+      document.getElementById("isi").innerHTML = data.map((r) => `<tr>
+        <td class="font-semibold text-slate-400">${r.id}</td>
+        <td>${avatar(r.penyewa)}</td>
+        <td><b>${teks(r.kendaraan)}</b><br><span class="text-xs text-slate-500">${teks(r.plat)}</span></td>
+        <td>${r.mulai} - ${r.kembali}<br><span class="text-xs text-slate-500">${r.lama} hari</span></td>
+        <td>${badge(r.masa)}</td>
+        <td>${Number(r.diskon)}%</td>
+        <td class="text-right"><b class="text-[15px]">${rupiah(r.biaya)}</b><br><s class="text-xs text-slate-400">${rupiah(r.normal)}</s></td>
+        <td>${badge(r.statusBayar)}${r.metode ? ` <span class="ml-1.5 text-xs text-slate-500">${teks(r.metode)}</span>` : ""}</td>
+      </tr>`).join("") || '<tr><td colspan="8" class="!py-8 text-center text-slate-500">Data tidak ditemukan</td></tr>';
+    } catch (error) {
+      alert(error.message);
+    }
+  }
+
+  cari.addEventListener("submit", (e) => { e.preventDefault(); muat(); });
+  cari.addEventListener("reset", () => setTimeout(muat, 0));
+  muat();
+</script>
+</body>
+</html>

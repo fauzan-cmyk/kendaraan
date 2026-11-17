@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <title>Kendaraan</title>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <style type="text/tailwindcss">
+    @theme {
+      --font-sans: "Plus Jakarta Sans", system-ui, sans-serif;
+      --color-navy: #0f172a;
+      --color-navy-aktif: #1e293b;
+      --color-kuning: #fbbf24;
+      --color-kuning-muda: #fcd34d;
+      --radius-kartu: 14px;
+      --radius-isian: 10px;
+    }
+  </style>
+</head>
+<body class="flex min-h-screen bg-slate-50 font-sans text-slate-900">
+<aside id="menu" class="flex w-60 shrink-0 flex-col gap-7 bg-navy px-4 py-7"></aside>
+<main class="min-w-0 max-w-[1080px] flex-1 p-9">
+  <header id="header" data-judul="Kendaraan" data-sub="Detail dan ketersediaan kendaraan"></header>
+
+  <form id="cari" data-kartu class="mb-6">
+    <label>Nama kendaraan <input name="nama" /></label>
+    <label>Jenis
+      <select name="jenis"><option value="">Semua</option><option>Mobil</option><option>Motor</option></select>
+    </label>
+    <label>Ketersediaan
+      <select name="ketersediaan"><option value="">Semua</option><option>Tersedia</option><option>Tidak tersedia</option></select>
+    </label>
+    <button>Cari</button>
+    <button type="reset">Reset</button>
+  </form>
+
+  <section id="daftar" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4"></section>
+</main>
+
+<script src="api.js"></script>
+<script>
+  const cari = document.getElementById("cari");
+
+  async function muat() {
+    try {
+      const data = await panggil("kendaraan" + filter(cari));
+      document.getElementById("daftar").innerHTML = data.map((k) => {
+        let status = "Tersedia";
+        if (k.dipakai == 1) {
+          status = "Sedang digunakan";
+        }
+        return `<div class="${GAYA.kartu}">
+          <div class="flex items-start justify-between gap-2">
+            <div>
+              <div class="text-lg font-extrabold">${teks(k.nama)}</div>
+              <div class="text-[13px] text-slate-500">${teks(k.plat)} - ${teks(k.jenis)}</div>
+            </div>
+            ${badge(status)}
+          </div>
+          <div class="mt-4 flex items-center justify-between border-t border-slate-100 pt-3 text-[13px]">
+            <span class="text-slate-500">Tarif per hari</span><b>${rupiah(k.tarif)}</b>
+          </div>
+        </div>`;
+      }).join("") || '<p class="text-sm text-slate-500">Data tidak ditemukan</p>';
+    } catch (error) {
+      alert(error.message);
+    }
+  }
+
+  cari.addEventListener("submit", (e) => { e.preventDefault(); muat(); });
+  cari.addEventListener("reset", () => setTimeout(muat, 0));
+  muat();
+</script>
+</body>
+</html>

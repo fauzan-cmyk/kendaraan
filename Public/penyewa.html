@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <title>Penyewa</title>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <style type="text/tailwindcss">
+    @theme {
+      --font-sans: "Plus Jakarta Sans", system-ui, sans-serif;
+      --color-navy: #0f172a;
+      --color-navy-aktif: #1e293b;
+      --color-kuning: #fbbf24;
+      --color-kuning-muda: #fcd34d;
+      --radius-kartu: 14px;
+      --radius-isian: 10px;
+    }
+  </style>
+</head>
+<body class="flex min-h-screen bg-slate-50 font-sans text-slate-900">
+<aside id="menu" class="flex w-60 shrink-0 flex-col gap-7 bg-navy px-4 py-7"></aside>
+<main class="min-w-0 max-w-[1500px] flex-1 p-9">
+  <header id="header" data-judul="Penyewa" data-sub="Daftar orang yang menyewa"></header>
+
+  <form id="cari" data-kartu class="mb-6">
+    <label>Nama <input name="nama" /></label>
+    <label>Pembayaran
+      <select name="pembayaran"><option value="">Semua</option><option>Sudah bayar</option><option>Belum bayar</option></select>
+    </label>
+    <button>Cari</button>
+    <button type="reset">Reset</button>
+  </form>
+
+  <section data-kartu class="overflow-x-auto">
+    <table>
+      <thead>
+        <tr><th>No</th><th>Nama</th><th>Transaksi</th><th>Total biaya</th><th>Sisa pembayaran</th><th>Pembayaran</th></tr>
+      </thead>
+      <tbody id="isi"></tbody>
+    </table>
+  </section>
+</main>
+
+<dialog id="dialog-bayar" class="m-auto w-96 rounded-kartu p-6 shadow-xl backdrop:bg-black/40">
+  <h2 id="judul-bayar" class="text-base font-extrabold"></h2>
+  <p id="sisa-bayar" class="mb-4 mt-1 text-[13px] text-slate-500"></p>
+  <form id="form-bayar" class="!flex-col !items-stretch">
+    <label>Metode pembayaran
+      <select name="metode"><option>Cash</option><option>Transfer</option></select>
+    </label>
+    <label>Jumlah dibayar
+      <input name="uang" type="number" min="1" required />
+    </label>
+    <p id="info-bayar" class="min-h-5 text-[13px] font-semibold text-slate-600"></p>
+    <div class="flex gap-2">
+      <button type="button" id="batal-bayar" class="flex-1 !bg-slate-100 !text-slate-700">Batal</button>
+      <button class="flex-1">Bayar</button>
+    </div>
+  </form>
+</dialog>
+
+<script src="api.js"></script>
+<script>
+  const cari = document.getElementById("cari");
+  const dialog = document.getElementById("dialog-bayar");
+  const formBayar = document.getElementById("form-bayar");
+  let data = [];
+  let terpilih = null;
+
+  async function muat() {
+    try {
+      data = await panggil("penyewa" + filter(cari));
+      const saya = await panggil("auth/saya");
+      const tombolBayar = (i) => saya.peran === "admin"
+        ? badge("Pending")
+        : `<button onclick="bayar(${i})" class="h-8 cursor-pointer rounded-full bg-kuning px-4 text-xs font-extrabold text-navy hover:bg-kuning-muda">Bayar</button>`;
+
+      document.getElementById("isi").innerHTML = data.map((d, i) => `<tr>
+        <td class="font-semibold text-slate-400">${i + 1}</td>
+        <td>${avatar(d.nama)}</td>
+        <td class="text-slate-500">${d.jumlah} transaksi</td>
+        <td>${rupiah(d.total)}</td>
+        <td><b>${rupiah(d.sisa)}</b></td>
+        <td>${d.sisa > 0 ? tombolBayar(i) : badge("Lunas")}</td>
+      </tr>`).join("") || '<tr><td colspan="6" class="!py-8 text-center text-slate-500">Data tidak ditemukan</td></tr>';
+    } catch (error) {
+      alert(error.message);
+    }
+  }
+
+  function bayar(i) {
+    terpilih = data[i];
+    document.getElementById("judul-bayar").textContent = "Pembayaran - " + terpilih.nama;
+    document.getElementById("sisa-bayar").textContent = "Sisa tagihan: " + rupiah(terpilih.sisa);
+    formBayar.elements.metode.value = "Cash";
+    formBayar.elements.uang.value = terpilih.sisa;
+    sesuaikan();
+    dialog.showModal();
+  }
+
+  function sesuaikan() {
+    const transfer = formBayar.elements.metode.value === "Transfer";
+    const uang = formBayar.elements.uang;
+    uang.max = transfer ? terpilih.sisa : "";
+    if (transfer && parseInt(uang.value) > terpilih.sisa) {
+      uang.value = terpilih.sisa;
+    }
+    info();
+  }
+
+  function info() {
+    const uang = parseInt(formBayar.elements.uang.value) || 0;
+    const sisa = terpilih.sisa;
+    const transfer = formBayar.elements.metode.value === "Transfer";
+    let teksInfo = "";
+
+    if (uang > sisa) {
+      teksInfo = transfer ? "Transfer tidak boleh lebih dari " + rupiah(sisa) : "Kembalian: " + rupiah(uang - sisa);
+    } else if (uang === sisa) {
+      teksInfo = transfer ? "Jumlah pas, tagihan lunas" : "Uang pas, tidak ada kembalian";
+    } else if (uang > 0) {
+      teksInfo = "Pembayaran sebagian, sisa tagihan " + rupiah(sisa - uang);
+    } else if (transfer) {
+      teksInfo = "Maksimal transfer: " + rupiah(sisa);
+    }
+    document.getElementById("info-bayar").textContent = teksInfo;
+  }
+
+  formBayar.elements.metode.addEventListener("change", sesuaikan);
+  formBayar.elements.uang.addEventListener("input", info);
+  document.getElementById("batal-bayar").addEventListener("click", () => dialog.close());
+
+  formBayar.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    try {
+      const hasil = await panggil("penyewa/bayar", "POST", {
+        penyewa: terpilih.nama,
+        uang: formBayar.elements.uang.value,
+        metode: formBayar.elements.metode.value
+      });
+      dialog.close();
+      alert("Pembayaran berhasil. Kembalian: " + rupiah(hasil.kembalian));
+      muat();
+    } catch (error) {
+      alert(error.message);
+    }
+  });
+
+  cari.addEventListener("submit", (e) => { e.preventDefault(); muat(); });
+  cari.addEventListener("reset", () => setTimeout(muat, 0));
+  muat();
+</script>
+</body>
+</html>
