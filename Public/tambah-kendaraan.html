@@ -42,7 +42,7 @@
     try {
       await panggil("tambah-kendaraan", "POST", Object.fromEntries(new FormData(tambah)));
       alert("Unit berhasil ditambahkan");
-      location.href = "kendaraan.html";
+      location.href = "/kendaraan";
     } catch (error) {
       alert(error.message);
     }

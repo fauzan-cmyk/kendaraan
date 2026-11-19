@@ -23,7 +23,7 @@ function teks(isi) {
 
 async function keluar() {
   await panggil("auth/logout", "POST");
-  location.href = "login.html";
+  location.href = "/login";
 }
 
 const GAYA = {
@@ -103,8 +103,8 @@ document.getElementById("menu").innerHTML = `
   </div>
   <nav class="flex flex-col gap-1">` +
   MENU.map(([file, nama]) => {
-    const aktif = location.pathname.endsWith("/" + file + ".html");
-    return `<a href="${file}.html" class="${TAUTAN} ${aktif ? "bg-navy-aktif text-white shadow-[inset_3px_0_0_var(--color-kuning)]" : "text-slate-400 hover:bg-navy-aktif/60"}">${nama}</a>`;
+    const aktif = location.pathname === "/" + file;
+    return `<a href="/${file}" class="${TAUTAN} ${aktif ? "bg-navy-aktif text-white shadow-[inset_3px_0_0_var(--color-kuning)]" : "text-slate-400 hover:bg-navy-aktif/60"}">${nama}</a>`;
   }).join("") +
   `</nav>
   <div class="mt-auto flex flex-col gap-1">
